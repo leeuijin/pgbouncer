@@ -1,0 +1,47 @@
+[pgbouncer]
+pool_mode = session 
+default_pool_size = 200
+max_client_conn = 10000
+reserve_pool_size = 1600
+reserve_pool_timeout = 3
+listen_port = 6543
+listen_addr = *
+auth_type = md5
+auth_file = /data/master/pgbouncer.user
+admin_users=gpadmin
+client_login_timeout = 30
+server_lifetime = 7200
+query_wait_timeout = 600
+server_reset_query = discard temp; reset all;
+
+cat /data/master/pgbouncer.user
+
+"postgres" "md5djskjjdkajsdkljasduihuhafuhasudhuashd"
+
+select usename,passwd from pg_shadow;
+
+1. pool_mode : session/transaction/statement  session 서버연결이 끊기면 다른풀로 대체, 트랜젝션이 완료되면 풀로 해제, statement 별로 완료되면 풀 해제(주의: 연속된 statement 구문 실행 시 문제 발생 할 수 있음), 기본적으로 session 을 가장 많이 사용
+2. default_pool_size : 기본적으로 client 와 server 간의 기본적으로 허용할 pool 갯수 입니다.
+너무 작은 경우 pool 이 extend 되면서 성능 저하가 발생할 수 있습니다.
+관련 파라미터 (reserve_pool_size ,reserve_pool_timeout ,min_pool_size)
+3. max_client_conn : client 가 pgboucer 로 연결할 최대 connection 갯수이다. 
+여러개의 논리 database 를 서비스 운용할 경우 데이터베이스 갯수에 따라 배수로 설정 할것을 고려하고  max_client_conn 에 다다르지 않도록 관리하도록 한다.
+4. reserve_pool_size,reserve_pool_timeout  : 보통 default_pool_size 에서 추가적으로 운용할 pool 갯수를 자동적으로 늘릴 경우 client_login_timeout 동안 기다리다가 pool을 확장한다.
+이때 확장하는 pool size 를 설정한다.
+5. listen_port : pgbouncer 서비스 포트
+6. listen_addr : 특정 IP 에 대해서만 서비스 할 경우 IP를 명시한다. 모든 IP 에 대해서 Open 할 경우 *
+7. auth_type : 사용자를 인증하는 방식을 선택한다.
+  자세한 내용은 공식 홈페이지에서 확인하시길 바라고 보통 md5, scram-sha-256 방식을 많이쓴다.
+https://www.pgbouncer.org/config.html
+8. auth_file : 암호화된 사용자 이름과 암호화된 암호를 작성한 파일의 경로와 파일명을 명시한다.
+9. admin_users : 콘솔에서 모든 명령어를 실행할 수 있는 관리자 명을 작성합니다.
+10. client_login_timeout : client가 접속하려 할 경우 최대 대기시간, 30초가 넘도록 connection이 되지 않으면 connection은 실패한다.
+주의할 점은 위의 reserve_pool_timeout 시간보다 크게 설정할 것
+11. server_lifetime : 사용하지 않으면서 오래된 client 연결을 제거합니다. 기본값 7200, 2시간
+12. query_wait_timeout : 쿼리가 DB서버에 할당되지 못하고 계속 설정한 시간 이상으로 큐에 대기할 경우 취소합니다.
+13. server_reset_query : pool 을 다른 session 에서 사용할 경우, 기존에 정의된 설정값 또는 미리캐시된 데이터를 정리할 필요가 있습니다.
+ discard temp -> 이전 session에서 사용하던 임시테이블 해제
+ reset all; -> 이전 session에서 set으로 설정된 값 해제하고 기본값으로 변경
+
+
+
